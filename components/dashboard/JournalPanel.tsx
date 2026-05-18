@@ -119,6 +119,8 @@ export function JournalPanel({
             onChange={(e) => setJournalText(e.target.value)}
             placeholder="How are you feeling right now?"
             disabled={saving}
+            maxLength={5000}
+            aria-label="Journal entry"
             className="w-full h-24 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-zinc-500 p-3 text-sm resize-none focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 transition-all disabled:opacity-50"
           />
           <Button

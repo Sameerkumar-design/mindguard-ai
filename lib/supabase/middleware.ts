@@ -38,12 +38,19 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes: redirect to /login if not authenticated
-  const protectedPaths = ["/dashboard"];
+  const protectedPaths = ["/dashboard", "/api/journal"];
   const isProtected = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
   if (isProtected && !user) {
+    // For API routes, return 401 instead of redirect
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

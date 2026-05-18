@@ -68,19 +68,22 @@ export default function Navbar() {
           >
             Log in
           </Link>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="rounded-full bg-white text-black px-5 py-2 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.3)]"
-          >
-            Get Started
-          </motion.button>
+          <Link href="/signup">
+            <motion.span
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="inline-block rounded-full bg-white text-black px-5 py-2 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.3)] cursor-pointer"
+            >
+              Get Started
+            </motion.span>
+          </Link>
         </div>
 
         {/* Mobile Menu Toggle */}
         <button
           className="md:hidden text-zinc-300 hover:text-white"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
         >
           {mobileMenuOpen ? <X /> : <Menu />}
         </button>
@@ -112,9 +115,13 @@ export default function Navbar() {
             >
               Log in
             </Link>
-            <button className="rounded-full bg-white text-black px-5 py-3 text-lg font-semibold w-full mt-2">
+            <Link
+              href="/signup"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block rounded-full bg-white text-black px-5 py-3 text-lg font-semibold w-full mt-2 text-center"
+            >
               Get Started
-            </button>
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>
