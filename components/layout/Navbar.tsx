@@ -1,21 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Brain } from "lucide-react";
+import { Menu, X, Brain, User, LayoutDashboard, LogOut, FileText } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
+import { logout } from "@/app/actions/auth";
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Detect auth state
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUserEmail(user?.email ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    setDropdownOpen(false);
+    await logout();
+  }
 
   const navLinks = [
     { name: "Features", href: "#features" },
@@ -23,6 +56,9 @@ export default function Navbar() {
     { name: "Testimonials", href: "#testimonials" },
     { name: "Pricing", href: "#pricing" },
   ];
+
+  const isLoggedIn = !!userEmail;
+  const initials = userEmail ? userEmail.slice(0, 2).toUpperCase() : "";
 
   return (
     <header
@@ -61,22 +97,83 @@ export default function Navbar() {
           </div>
         </nav>
 
+        {/* Desktop Auth Section */}
         <div className="hidden md:flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
-          >
-            Log in
-          </Link>
-          <Link href="/signup">
-            <motion.span
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-block rounded-full bg-white text-black px-5 py-2 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.3)] cursor-pointer"
-            >
-              Get Started
-            </motion.span>
-          </Link>
+          {isLoggedIn ? (
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 rounded-full bg-white/5 border border-white/10 px-3 py-1.5 hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-[11px] font-bold text-white">
+                  {initials}
+                </div>
+                <span className="text-sm text-zinc-300 max-w-[120px] truncate">
+                  {userEmail!.split("@")[0]}
+                </span>
+              </button>
+
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-2 w-56 rounded-2xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden"
+                  >
+                    <div className="px-4 py-3 border-b border-white/5">
+                      <p className="text-xs text-zinc-500">Signed in as</p>
+                      <p className="text-sm text-white truncate">{userEmail}</p>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <LayoutDashboard className="h-4 w-4" /> Dashboard
+                      </Link>
+                      <Link
+                        href="/report"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-white/5 hover:text-white transition-colors"
+                      >
+                        <FileText className="h-4 w-4" /> Wellness Report
+                      </Link>
+                    </div>
+                    <div className="border-t border-white/5 py-1">
+                      <button
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <LogOut className="h-4 w-4" /> {loggingOut ? "Logging out…" : "Log out"}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+              >
+                Log in
+              </Link>
+              <Link href="/signup">
+                <motion.span
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="inline-block rounded-full bg-white text-black px-5 py-2 text-sm font-semibold hover:bg-zinc-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.3)] cursor-pointer"
+                >
+                  Get Started
+                </motion.span>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -109,19 +206,42 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="h-px w-full bg-white/10 my-2" />
-            <Link
-              href="/login"
-              className="text-lg font-medium text-zinc-300 hover:text-white"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-full bg-white text-black px-5 py-3 text-lg font-semibold w-full mt-2 text-center"
-            >
-              Get Started
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-xs font-bold text-white">
+                    {initials}
+                  </div>
+                  <span className="text-sm text-zinc-300 truncate">{userEmail}</span>
+                </div>
+                <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 text-lg font-medium text-zinc-300 hover:text-white">
+                  <LayoutDashboard className="h-5 w-5" /> Dashboard
+                </Link>
+                <Link href="/report" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 text-lg font-medium text-zinc-300 hover:text-white">
+                  <FileText className="h-5 w-5" /> Wellness Report
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="flex items-center gap-3 text-lg font-medium text-red-400 hover:text-red-300 mt-2 cursor-pointer disabled:opacity-50"
+                >
+                  <LogOut className="h-5 w-5" /> {loggingOut ? "Logging out…" : "Log out"}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-lg font-medium text-zinc-300 hover:text-white">
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-full bg-white text-black px-5 py-3 text-lg font-semibold w-full mt-2 text-center"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
