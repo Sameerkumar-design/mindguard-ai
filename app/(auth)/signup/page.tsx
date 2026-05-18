@@ -4,10 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Brain, ArrowRight, Eye, EyeOff, Loader2, Check } from "lucide-react";
+import {
+  Brain,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Loader2,
+  Check,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 
 const PASSWORD_RULES = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -26,10 +35,12 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccess(false);
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -44,20 +55,59 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    // Placeholder auth — swap with Supabase later
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-      if (email && password) {
-        router.push("/dashboard");
-      } else {
-        setError("Please fill in all fields.");
+      if (authError) {
+        setError(authError.message);
+        return;
       }
+
+      // If email confirmation is enabled in Supabase, show success message.
+      // Otherwise, redirect to dashboard.
+      setSuccess(true);
+
+      // Auto-redirect after a short delay if auto-confirm is on
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 2000);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  if (success) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md mx-4"
+      >
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl p-8 md:p-10 text-center">
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Account created!
+          </h2>
+          <p className="text-zinc-400 text-sm mb-6">
+            Check your email to confirm your account, or you&apos;ll be
+            redirected shortly.
+          </p>
+          <Loader2 className="h-5 w-5 animate-spin text-purple-400 mx-auto" />
+        </div>
+      </motion.div>
+    );
   }
 
   return (

@@ -8,6 +8,7 @@ import { Brain, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,15 +23,20 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    // Placeholder auth — swap with Supabase later
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (email && password) {
-        router.push("/dashboard");
-      } else {
-        setError("Please fill in all fields.");
+      if (authError) {
+        setError(authError.message);
+        return;
       }
+
+      router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

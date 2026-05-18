@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Brain,
@@ -18,6 +18,7 @@ import {
   BarChart3,
   Clock,
   PenLine,
+  LogOut,
 } from "lucide-react";
 import {
   Card,
@@ -28,6 +29,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
+import { logout } from "@/app/actions/auth";
 
 // ── animation helpers ────────────────────────────────────────────────
 const fadeUp = {
@@ -174,6 +177,24 @@ function ScoreRing({
 // ── main dashboard ───────────────────────────────────────────────────
 export default function DashboardPage() {
   const [journalText, setJournalText] = useState("");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    async function getUser() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      setUserEmail(user?.email ?? null);
+    }
+    getUser();
+  }, []);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    await logout();
+  }
 
   return (
     <div className="min-h-screen bg-black pt-24 pb-16">
@@ -192,7 +213,7 @@ export default function DashboardPage() {
         >
           <div>
             <h1 className="text-3xl font-bold text-white">
-              Good morning, Student 👋
+              Good morning{userEmail ? `, ${userEmail.split("@")[0]}` : ""} 👋
             </h1>
             <p className="text-zinc-400 mt-1">
               Here&apos;s your wellness overview for today.
@@ -212,6 +233,15 @@ export default function DashboardPage() {
               className="rounded-xl border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 cursor-pointer"
             >
               <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="rounded-xl border-white/10 bg-white/5 text-zinc-300 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 cursor-pointer gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </motion.div>
