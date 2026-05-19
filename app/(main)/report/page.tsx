@@ -130,9 +130,16 @@ export default function ReportPage() {
                 {userEmail ? `Comprehensive analysis for ${userEmail.split("@")[0]}` : "Your complete mental wellness analysis"}
               </p>
             </div>
-            <Badge className="bg-purple-500/10 border-purple-500/20 text-purple-400 self-start md:self-auto">
-              <Activity className="h-3 w-3 mr-1" /> {analyzedEntries.length} entries analyzed
-            </Badge>
+            <div className="flex flex-col gap-2 self-start md:self-auto md:items-end">
+              <Badge className="bg-purple-500/10 border-purple-500/20 text-purple-400">
+                <Activity className="h-3 w-3 mr-1" /> {analyzedEntries.length} entries analyzed
+              </Badge>
+              {latestAnalysis?.provider && (
+                <Badge variant="secondary" className="bg-white/5 border-white/10 text-zinc-500 text-[10px]">
+                  Analyzed with {latestAnalysis.provider}
+                </Badge>
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -271,6 +278,11 @@ export default function ReportPage() {
                           </span>
                           {a && (
                             <div className="flex items-center gap-2">
+                              {a.provider && (
+                                <Badge variant="secondary" className="text-[10px] bg-white/5 border-white/10 text-zinc-500">
+                                  {a.provider}
+                                </Badge>
+                              )}
                               <Badge variant="secondary" className="text-[10px] bg-white/5 border-white/10 text-zinc-300">
                                 {a.emotionalTone}
                               </Badge>
@@ -281,12 +293,21 @@ export default function ReportPage() {
                           )}
                         </div>
                         <p className="text-sm text-zinc-300 leading-relaxed line-clamp-2">{entry.content}</p>
-                        {a && (
-                          <div className="flex items-center gap-4 mt-2 text-[10px] text-zinc-500">
-                            <span>Burnout: {a.burnoutRisk}%</span>
-                            <span>Positivity: {a.positivityScore}%</span>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-between mt-3">
+                          {a ? (
+                            <div className="flex items-center gap-4 text-[10px] text-zinc-500">
+                              <span>Burnout: {a.burnoutRisk}%</span>
+                              <span>Positivity: {a.positivityScore}%</span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-zinc-600">No analysis</span>
+                          )}
+                          <Link href={`/report/${entry.id}`}>
+                            <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 text-xs h-7 px-3 cursor-pointer">
+                              View Report →
+                            </Button>
+                          </Link>
+                        </div>
                       </div>
                     );
                   })}

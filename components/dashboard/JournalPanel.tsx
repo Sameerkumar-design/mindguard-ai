@@ -178,12 +178,19 @@ export function JournalPanel({
                   <span className="text-xs font-medium text-zinc-400">
                     {formatDate(entry.created_at)}
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className={`text-[10px] bg-white/5 border-white/10 ${getMoodColor(tone)}`}
-                  >
-                    {tone}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {entry.ai_analysis?.provider && (
+                      <Badge variant="secondary" className="text-[9px] bg-white/5 border-white/10 text-zinc-500">
+                        {entry.ai_analysis.provider}
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      className={`text-[10px] bg-white/5 border-white/10 ${getMoodColor(tone)}`}
+                    >
+                      {tone}
+                    </Badge>
+                  </div>
                 </div>
                 <p className="text-xs text-zinc-300 leading-relaxed truncate">
                   {entry.content}

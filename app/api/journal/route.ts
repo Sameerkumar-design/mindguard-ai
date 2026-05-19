@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { analyzeJournalEntry } from "@/lib/gemini";
+import { analyzeJournalEntry } from "@/lib/ai/analyze";
 import { saveJournalEntry, getJournalEntries } from "@/lib/database";
 
 // ── Constants ────────────────────────────────────────────────────────

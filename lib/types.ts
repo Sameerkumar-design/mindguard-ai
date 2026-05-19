@@ -10,6 +10,7 @@ export interface MoodAnalysis {
   wellnessInsights: string[];
   suggestions: string[];
   calmingRecommendations: string[];
+  provider?: "Gemini" | "OpenRouter" | "Fallback";
 }
 
 // ── Database Types ────────────────────────────────────────────────────────────
