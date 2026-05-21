@@ -3,8 +3,8 @@ import { SYSTEM_PROMPT, extractJSON, validateAnalysis, sleep } from "./utils";
 
 const RETRY_DELAYS = [2000, 5000];
 const OPENROUTER_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-3.3-8b-instruct:free"
+  "deepseek/deepseek-chat-v3-0324:free",
+  "meta-llama/llama-3.1-8b-instruct:free"
 ];
 
 async function tryOpenRouterModel(model: string, content: string): Promise<MoodAnalysis | null> {
@@ -42,7 +42,8 @@ async function tryOpenRouterModel(model: string, content: string): Promise<MoodA
 
       if (!response.ok) {
         const status = String(response.status);
-        console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${status}, Parsing: N/A, Success: No`);
+        const errorText = await response.text().catch(() => "Could not read response body");
+        console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${status}, Parsing: N/A, Success: No, Error Response: ${errorText}`);
         break; // break retry loop, move to next model
       }
 
