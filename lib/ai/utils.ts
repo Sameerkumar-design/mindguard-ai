@@ -37,6 +37,12 @@ export function getFallbackAnalysis(error?: string): MoodAnalysis {
 
 const VALID_STRESS = ["Low", "Moderate", "High", "Critical"] as const;
 
+function clampScore(value: unknown, fallback = 50): number {
+  if (value === undefined || value === null || value === "") return fallback;
+  const num = Number(value);
+  return Number.isNaN(num) ? fallback : Math.max(0, Math.min(100, num));
+}
+
 export function validateAnalysis(raw: Record<string, unknown>, provider: "Gemini" | "OpenRouter"): MoodAnalysis {
   return {
     emotionalSummary: String(raw.emotionalSummary ?? "").slice(0, 500),
@@ -46,8 +52,8 @@ export function validateAnalysis(raw: Record<string, unknown>, provider: "Gemini
     anxietyIndicators: Array.isArray(raw.anxietyIndicators)
       ? raw.anxietyIndicators.map((s) => String(s).slice(0, 200)).slice(0, 10)
       : [],
-    burnoutRisk: Math.max(0, Math.min(100, Number(raw.burnoutRisk) || 50)),
-    positivityScore: Math.max(0, Math.min(100, Number(raw.positivityScore) || 50)),
+    burnoutRisk: clampScore(raw.burnoutRisk, 50),
+    positivityScore: clampScore(raw.positivityScore, 50),
     emotionalTone: String(raw.emotionalTone ?? "Neutral").slice(0, 50),
     wellnessInsights: Array.isArray(raw.wellnessInsights)
       ? raw.wellnessInsights.map((s) => String(s).slice(0, 300)).slice(0, 5)

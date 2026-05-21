@@ -16,38 +16,47 @@ const genai = process.env.GEMINI_API_KEY
 async function tryModel(model: string, content: string): Promise<MoodAnalysis | null> {
   if (!genai) return null;
 
-  const response = await genai.models.generateContent({
-    model,
-    contents: content,
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: "application/json",
-      temperature: 0.7,
-      maxOutputTokens: 1024,
-    },
-  });
+  try {
+    const response = await genai.models.generateContent({
+      model,
+      contents: content,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: "application/json",
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      },
+    });
 
-  const text = response.text ?? "";
+    const text = response.text ?? "";
 
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[MindGuard] Gemini (${model}) raw response (${text.length} chars):`, text.slice(0, 300));
-  }
+    if (!text) {
+      console.log(`[AI Log] Provider: Gemini, Model: ${model}, Status: OK, Parsing: Failure (Empty response), Success: No`);
+      return null;
+    }
 
-  if (!text) return null;
+    const parsed = extractJSON(text);
+    if (!parsed) {
+      console.log(`[AI Log] Provider: Gemini, Model: ${model}, Status: OK, Parsing: Failure (Invalid JSON), Success: No`);
+      return null;
+    }
 
-  const parsed = extractJSON(text);
-  if (!parsed) {
-    console.error(`[MindGuard] JSON extraction failed from Gemini (${model}):`, text.slice(0, 200));
+    const result = validateAnalysis(parsed, "Gemini");
+    const providerSuccess = !!(result.emotionalSummary && result.emotionalSummary.length > 0);
+
+    console.log(`[AI Log] Provider: Gemini, Model: ${model}, Status: OK, Parsing: Success, Success: ${providerSuccess ? "Yes" : "No"}`);
+
+    if (providerSuccess) {
+      return result;
+    }
+
     return null;
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string };
+    const status = err.status ? String(err.status) : "Error";
+    console.log(`[AI Log] Provider: Gemini, Model: ${model}, Status: ${status}, Parsing: N/A, Success: No`);
+    throw error;
   }
-
-  const result = validateAnalysis(parsed, "Gemini");
-
-  if (result.emotionalSummary && result.emotionalSummary.length > 10) {
-    return result;
-  }
-
-  return null;
 }
 
 export async function attemptGeminiAnalysis(content: string): Promise<MoodAnalysis | null> {

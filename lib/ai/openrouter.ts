@@ -2,14 +2,14 @@ import type { MoodAnalysis } from "@/lib/types";
 import { SYSTEM_PROMPT, extractJSON, validateAnalysis, sleep } from "./utils";
 
 const RETRY_DELAYS = [2000, 5000];
-const OPENROUTER_MODEL = "openrouter/free";
+const OPENROUTER_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-8b-instruct:free"
+];
 
-export async function attemptOpenRouterAnalysis(content: string): Promise<MoodAnalysis | null> {
+async function tryOpenRouterModel(model: string, content: string): Promise<MoodAnalysis | null> {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.warn("[MindGuard] OPENROUTER_API_KEY is not set.");
-    return null;
-  }
+  if (!apiKey) return null;
 
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
     try {
@@ -18,12 +18,11 @@ export async function attemptOpenRouterAnalysis(content: string): Promise<MoodAn
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          // OpenRouter specific headers for metadata
-          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://mindguard-ai.vercel.app",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://mindguard-ai-six.vercel.app",
           "X-Title": "MindGuard AI"
         },
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
+          model: model,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: content }
@@ -31,53 +30,50 @@ export async function attemptOpenRouterAnalysis(content: string): Promise<MoodAn
           response_format: { type: "json_object" },
           temperature: 0.7,
         }),
-        // Add a 15-second timeout
         signal: AbortSignal.timeout(15000),
       });
 
       if (response.status === 429 && attempt < RETRY_DELAYS.length) {
         const delay = RETRY_DELAYS[attempt];
-        console.warn(`[MindGuard] OpenRouter rate limited (429). Retrying in ${delay}ms... (attempt ${attempt + 1})`);
+        console.warn(`[MindGuard] OpenRouter ${model} rate limited (429). Retrying in ${delay}ms... (attempt ${attempt + 1})`);
         await sleep(delay);
         continue;
       }
 
       if (!response.ok) {
-        console.error(`[MindGuard] OpenRouter failed with status: ${response.status}`);
-        const text = await response.text().catch(() => "");
-        console.error(`[MindGuard] OpenRouter response: ${text.slice(0, 150)}`);
-        if (attempt < RETRY_DELAYS.length) {
-            const delay = RETRY_DELAYS[attempt];
-            await sleep(delay);
-            continue;
-        }
-        break;
+        const status = String(response.status);
+        console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${status}, Parsing: N/A, Success: No`);
+        break; // break retry loop, move to next model
       }
 
       const data = await response.json();
       const text = data.choices?.[0]?.message?.content ?? "";
 
-      if (process.env.NODE_ENV === "development") {
-        console.log(`[MindGuard] OpenRouter raw response (${text.length} chars):`, text.slice(0, 300));
+      if (!text) {
+        console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${response.status}, Parsing: Failure (Empty response), Success: No`);
+        break;
       }
-
-      if (!text) return null;
 
       const parsed = extractJSON(text);
       if (!parsed) {
-        console.error(`[MindGuard] JSON extraction failed from OpenRouter:`, text.slice(0, 200));
-        return null;
+        console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${response.status}, Parsing: Failure (Invalid JSON), Success: No`);
+        break;
       }
 
       const result = validateAnalysis(parsed, "OpenRouter");
+      const providerSuccess = !!(result.emotionalSummary && result.emotionalSummary.length > 0);
 
-      if (result.emotionalSummary && result.emotionalSummary.length > 10) {
+      console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: ${response.status}, Parsing: Success, Success: ${providerSuccess ? "Yes" : "No"}`);
+
+      if (providerSuccess) {
         return result;
       }
+      break;
 
-      return null;
     } catch (error: unknown) {
-      console.error(`[MindGuard] OpenRouter attempt failed:`, error instanceof Error ? error.message : "Unknown error");
+      const errMsg = error instanceof Error ? error.message : "Unknown error";
+      console.log(`[AI Log] Provider: OpenRouter, Model: ${model}, Status: Error (${errMsg}), Parsing: N/A, Success: No`);
+      
       if (attempt < RETRY_DELAYS.length) {
         const delay = RETRY_DELAYS[attempt];
         await sleep(delay);
@@ -85,6 +81,21 @@ export async function attemptOpenRouterAnalysis(content: string): Promise<MoodAn
       }
       break;
     }
+  }
+
+  return null;
+}
+
+export async function attemptOpenRouterAnalysis(content: string): Promise<MoodAnalysis | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    console.warn("[MindGuard] OPENROUTER_API_KEY is not set.");
+    return null;
+  }
+
+  for (const model of OPENROUTER_MODELS) {
+    const result = await tryOpenRouterModel(model, content);
+    if (result) return result;
   }
 
   return null;
