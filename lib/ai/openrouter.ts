@@ -2,9 +2,10 @@ import type { MoodAnalysis } from "@/lib/types";
 import { SYSTEM_PROMPT, extractJSON, validateAnalysis, sleep } from "./utils";
 
 const RETRY_DELAYS = [2000, 5000];
-const OPENROUTER_MODELS = [
-  "deepseek/deepseek-chat-v3-0324:free",
-  "meta-llama/llama-3.1-8b-instruct:free"
+const OPENROUTER_MODELS =  [
+  "deepseek/deepseek-r1-0528:free",
+  "meta-llama/llama-3.3-8b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
 ];
 
 async function tryOpenRouterModel(model: string, content: string): Promise<MoodAnalysis | null> {
